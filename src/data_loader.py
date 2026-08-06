@@ -47,7 +47,7 @@ class DataLoader:
         ext = self.file_path.suffix.lower()
         if ext == ".csv":
             self.df = pd.read_csv(self.file_path, **kwargs)
-        elif ext in [".xlsx", ".xls"]:
+        elif ext in (".xlsx", ".xls"):
             self.df = pd.read_excel(self.file_path, **kwargs)
         elif ext == ".parquet":
             self.df = pd.read_parquet(self.file_path, **kwargs)
@@ -62,7 +62,9 @@ class DataLoader:
         return {
             "Rows": self.df.shape[0],
             "Columns": self.df.shape[1],
+            "Features": self.df.columns.tolist(),
             "Memory (MB)": round(self.df.memory_usage(deep=True).sum() / 1024**2, 2),
+            "Duplicate Columns": self.df.columns.duplicated().sum(),
         }
 
     @ensure_data_loaded
@@ -99,5 +101,19 @@ class DataLoader:
         Return descriptive statistics separated by data type to avoid NaN mixing.
         """
         if include_numeric:
-            return self.df.describe(include=[object, "category"]).T
-        return self.df.describe(exclude=[object, "category"]).T
+            return self.df.describe().T
+        return self.df.describe(include=["object", "category"]).T
+
+    @ensure_data_loaded
+    def feature_summary(self) -> pd.DataFrame:
+        """
+        Return a summary of every feature.
+        """
+        return pd.DataFrame(
+            {
+                "Data Type": self.df.dtypes,
+                "Unique Values": self.df.nunique(),
+                "Missing Count": self.df.isna().sum(),
+                "Missing Percentage": (self.df.isna().mean() * 100).round(2),
+            }
+        )
